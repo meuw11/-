@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>加密貨幣止損槓桿計算器</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+    label, input, select { display: block; margin: 10px 0; }
+    input[type="number"] { width: 200px; }
+    button { padding: 10px 20px; }
+    .result { margin-top: 20px; white-space: pre-wrap; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>永續合約定量止損計算器</h2>
+
+  <label>本金（USD）<input type="number" id="capital" step="0.01" /></label>
+  <label>止損比例（%）<input type="number" id="stopPercent" step="0.01" placeholder="如 1 代表 1%" /></label>
+  <label>進場方向
+    <select id="direction">
+      <option value="long">做多</option>
+      <option value="short">做空</option>
+    </select>
+  </label>
+  <label>進場價<input type="number" id="entryPrice" step="0.01" /></label>
+  <label>止損距離（%）<input type="number" id="stopRangePercent" step="0.01" placeholder="例如 1 表示 ±1%" onchange="autoFillStopPrice()" /></label>
+  <label>止損價<input type="number" id="stopPrice" step="0.01" /></label>
+
+  <label>倉位模式
+    <select id="mode">
+      <option value="isolated">逐倉（Isolated）</option>
+      <option value="cross">全倉（Cross）</option>
+    </select>
+  </label>
+
+  <button onclick="calculate()">計算</button>
+
+  <div class="result" id="output"></div>
+
+  <script>
+    function autoFillStopPrice() {
+      const entry = parseFloat(document.getElementById("entryPrice").value);
+      const direction = document.getElementById("direction").value;
+      const percent = parseFloat(document.getElementById("stopRangePercent").value);
+
+      if (!entry || !percent) return;
+
+      const delta = entry * (percent / 100);
+      const stopPrice = direction === "long" ? entry - delta : entry + delta;
+      document.getElementById("stopPrice").value = stopPrice.toFixed(2);
+    }
+
+    function calculate() {
+      const capital = parseFloat(document.getElementById("capital").value);
+      const stopPercent = parseFloat(document.getElementById("stopPercent").value);
+      const entry = parseFloat(document.getElementById("entryPrice").value);
+      const stop = parseFloat(document.getElementById("stopPrice").value);
+      const mode = document.getElementById("mode").value;
+      const direction = document.getElementById("direction").value;
+
+      if (!capital || !stopPercent || !entry || !stop || entry === stop) {
+        document.getElementById("output").innerText = "請輸入正確數值，且進場價 ≠ 止損價。";
+        return;
+      }
+
+      const stopLossUSD = capital * (stopPercent / 100);
+      const riskPerUnit = Math.abs(entry - stop);
+      const positionSize = stopLossUSD / riskPerUnit;
+      const notionalValue = positionSize * entry;
+      const leverage = Math.floor(notionalValue / capital);
+      const actualLossPercent = ((positionSize * riskPerUnit) / capital) * 100;
+
+      const modeText = mode === 'isolated' ? '逐倉' : '全倉';
+      const dirText = direction === 'long' ? '做多' : '做空';
+
+      document.getElementById("output").innerText = 
+        `📌 模式：${modeText}\n📈 方向：${dirText}
+💰 可承受損失金額：${stopLossUSD.toFixed(2)} USD
+📊 倉位大小：約 ${positionSize.toFixed(4)} 單位
+🚀 建議槓桿倍數：${leverage} 倍
+⚠️ 潛在虧損佔本金：${actualLossPercent.toFixed(2)}%`;
+    }
+  </script>
+</body>
+</html>
