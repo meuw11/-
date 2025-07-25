@@ -4,27 +4,94 @@
   <meta charset="UTF-8">
   <title>加密貨幣止損槓桿計算器</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
-    label, input, select { display: block; margin: 10px 0; }
-    input[type="number"] { width: 200px; }
-    button { padding: 10px 20px; }
-    .result { margin-top: 20px; white-space: pre-wrap; font-weight: bold; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 30px;
+      max-width: 700px;
+      margin: auto;
+    }
+    h2 {
+      text-align: center;
+    }
+    label, input, select {
+      display: block;
+      margin: 12px 0;
+      font-size: 16px;
+    }
+    input[type="number"], input[type="text"], select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-top: 20px;
+      width: 100%;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 25px;
+      padding: 15px;
+      background: #fff;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-size: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    #customSymbol {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h2>永續合約定量止損計算器</h2>
 
-  <label>本金（USD）<input type="number" id="capital" step="0.01" /></label>
-  <label>止損比例（%）<input type="number" id="stopPercent" step="0.01" placeholder="如 1 代表 1%" /></label>
+  <label>本金（USD）
+    <input type="number" id="capital" step="0.01" />
+  </label>
+
+  <label>止損比例（%）
+    <input type="number" id="stopPercent" step="0.01" placeholder="例如：1 代表 1%" />
+  </label>
+
+  <label>幣種選擇
+    <select id="symbol" onchange="handleSymbolChange()">
+      <option value="BTC">BTC</option>
+      <option value="ETH">ETH</option>
+      <option value="SOL">SOL</option>
+      <option value="DOGE">DOGE</option>
+      <option value="BNB">BNB</option>
+      <option value="XRP">XRP</option>
+      <option value="ADA">ADA</option>
+      <option value="SUI">SUI</option>
+      <option value="custom">其他（請輸入）</option>
+    </select>
+  </label>
+
+  <label id="customSymbolLabel">自定幣種名稱
+    <input type="text" id="customSymbol" placeholder="例如：PEPE" />
+  </label>
+
   <label>進場方向
     <select id="direction">
       <option value="long">做多</option>
       <option value="short">做空</option>
     </select>
   </label>
-  <label>進場價<input type="number" id="entryPrice" step="0.01" /></label>
-  <label>止損距離（%）<input type="number" id="stopRangePercent" step="0.01" placeholder="例如 1 表示 ±1%" onchange="autoFillStopPrice()" /></label>
-  <label>止損價<input type="number" id="stopPrice" step="0.01" /></label>
+
+  <label>進場價
+    <input type="number" id="entryPrice" step="0.0001" />
+  </label>
+
+  <label>止損距離（%）
+    <input type="number" id="stopRangePercent" step="0.01" placeholder="例如：1 表示 ±1%" onchange="autoFillStopPrice()" />
+  </label>
+
+  <label>止損價
+    <input type="number" id="stopPrice" step="0.0001" />
+  </label>
 
   <label>倉位模式
     <select id="mode">
@@ -38,6 +105,20 @@
   <div class="result" id="output"></div>
 
   <script>
+    function handleSymbolChange() {
+      const selected = document.getElementById("symbol").value;
+      const customInput = document.getElementById("customSymbol");
+      const label = document.getElementById("customSymbolLabel");
+
+      if (selected === "custom") {
+        customInput.style.display = "block";
+        label.style.display = "block";
+      } else {
+        customInput.style.display = "none";
+        label.style.display = "none";
+      }
+    }
+
     function autoFillStopPrice() {
       const entry = parseFloat(document.getElementById("entryPrice").value);
       const direction = document.getElementById("direction").value;
@@ -47,7 +128,7 @@
 
       const delta = entry * (percent / 100);
       const stopPrice = direction === "long" ? entry - delta : entry + delta;
-      document.getElementById("stopPrice").value = stopPrice.toFixed(2);
+      document.getElementById("stopPrice").value = stopPrice.toFixed(4);
     }
 
     function calculate() {
@@ -57,12 +138,15 @@
       const stop = parseFloat(document.getElementById("stopPrice").value);
       const mode = document.getElementById("mode").value;
       const direction = document.getElementById("direction").value;
+      const symbol = document.getElementById("symbol").value;
+      const customSymbol = document.getElementById("customSymbol").value.trim();
 
       if (!capital || !stopPercent || !entry || !stop || entry === stop) {
-        document.getElementById("output").innerText = "請輸入正確數值，且進場價 ≠ 止損價。";
+        document.getElementById("output").innerText = "❗請輸入正確數值，且進場價 ≠ 止損價。";
         return;
       }
 
+      const coin = symbol === "custom" ? (customSymbol || "自定幣種") : symbol;
       const stopLossUSD = capital * (stopPercent / 100);
       const riskPerUnit = Math.abs(entry - stop);
       const positionSize = stopLossUSD / riskPerUnit;
@@ -74,12 +158,18 @@
       const dirText = direction === 'long' ? '做多' : '做空';
 
       document.getElementById("output").innerText = 
-        `📌 模式：${modeText}\n📈 方向：${dirText}
+`📌 模式：${modeText}
+📈 方向：${dirText}
+🪙 幣種：${coin}
 💰 可承受損失金額：${stopLossUSD.toFixed(2)} USD
-📊 倉位大小：約 ${positionSize.toFixed(4)} 單位
+📊 倉位大小：約 ${positionSize.toFixed(6)} ${coin}
+💵 倉位價值：約 ${notionalValue.toFixed(2)} USD
 🚀 建議槓桿倍數：${leverage} 倍
 ⚠️ 潛在虧損佔本金：${actualLossPercent.toFixed(2)}%`;
     }
   </script>
 </body>
 </html>
+
+
+  
