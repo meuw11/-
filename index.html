@@ -1,147 +1,149 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>加密貨幣永續合約定量止損計算器</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 30px;
-      background: #f7f9fa;
-      max-width: 600px;
-      margin: auto;
-    }
-    input, select, button {
-      padding: 8px;
-      margin: 8px 0;
-      width: 100%;
-      font-size: 16px;
-    }
-    label {
-      font-weight: bold;
-      margin-top: 12px;
-      display: block;
-    }
-    .output {
-      margin-top: 20px;
-      background: #eef;
-      padding: 15px;
-      border-radius: 8px;
-    }
-  </style>
+  <title>永續合約定量止損計算器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 text-gray-800 p-6">
+  <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl space-y-6">
+    <h1 class="text-2xl font-bold text-center">加密貨幣永續合約止損計算器</h1>
 
-  <h2>永續合約止損計算器</h2>
+    <!-- 模式切換 -->
+    <div>
+      <label class="font-semibold block mb-2">選擇模式：</label>
+      <select id="mode" class="p-2 border rounded w-full">
+        <option value="stopLoss">目標止損金額模式</option>
+        <option value="leverage">自訂槓桿模式</option>
+      </select>
+    </div>
 
-  <label for="mode">模式</label>
-  <select id="mode">
-    <option value="isolated">逐倉</option>
-    <option value="cross">全倉</option>
-  </select>
+    <!-- 幣種選擇 -->
+    <div>
+      <label class="font-semibold block mb-2">幣種：</label>
+      <select id="symbol" class="p-2 border rounded w-full" onchange="handleCoinSelect()">
+        <option>BTC</option>
+        <option>ETH</option>
+        <option>SOL</option>
+        <option>DOGE</option>
+        <option>BNB</option>
+        <option>XRP</option>
+        <option>ADA</option>
+        <option>SUI</option>
+        <option value="custom">其他</option>
+      </select>
+      <input id="customSymbol" type="text" class="mt-2 p-2 border rounded w-full hidden" placeholder="請輸入幣種代號（例如：PEPE）">
+    </div>
 
-  <label for="direction">方向</label>
-  <select id="direction">
-    <option value="long">做多</option>
-    <option value="short">做空</option>
-  </select>
+    <!-- 方向 -->
+    <div>
+      <label class="font-semibold block mb-2">進場方向：</label>
+      <select id="direction" class="p-2 border rounded w-full">
+        <option value="long">多單</option>
+        <option value="short">空單</option>
+      </select>
+    </div>
 
-  <label for="coin">幣種</label>
-  <select id="coin" onchange="handleOtherCoin(this)">
-    <option>BTC</option>
-    <option>ETH</option>
-    <option>SOL</option>
-    <option>DOGE</option>
-    <option>BNB</option>
-    <option>XRP</option>
-    <option>ADA</option>
-    <option>SUI</option>
-    <option value="other">其他（請輸入）</option>
-  </select>
-  <input type="text" id="customCoin" style="display:none;" placeholder="請輸入幣種代號">
+    <!-- 本金與價格區塊 -->
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block font-semibold">本金（USDT）：</label>
+        <input id="capital" type="number" class="p-2 border rounded w-full">
+      </div>
+      <div>
+        <label class="block font-semibold">進場價格：</label>
+        <input id="entryPrice" type="number" class="p-2 border rounded w-full">
+      </div>
+      <div>
+        <label class="block font-semibold">止損價格：</label>
+        <input id="stopPrice" type="number" class="p-2 border rounded w-full">
+      </div>
+      <div id="leverageInputContainer" class="hidden">
+        <label class="block font-semibold">自訂槓桿倍數：</label>
+        <input id="customLeverage" type="number" class="p-2 border rounded w-full">
+      </div>
+      <div id="stopLossPercentContainer">
+        <label class="block font-semibold">止損佔本金比例（%）：</label>
+        <input id="lossPercent" type="number" class="p-2 border rounded w-full">
+      </div>
+    </div>
 
-  <label for="capital">本金 (USDT)</label>
-  <input type="number" id="capital" placeholder="例如：1000">
+    <!-- 按鈕 -->
+    <button onclick="calculate()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded">
+      計算
+    </button>
 
-  <label for="entry">進場價格</label>
-  <input type="number" id="entry" placeholder="例如：50000">
-
-  <label for="stopLoss">止損價格</label>
-  <input type="number" id="stopLoss" placeholder="例如：48000">
-
-  <label for="slPercent">止損百分比 (%)</label>
-  <input type="number" id="slPercent" placeholder="自動填入或自行輸入">
-
-  <label for="leverage">手動設定槓桿倍數（可選填）</label>
-  <input type="number" id="leverage" placeholder="例如：5">
-
-  <button onclick="calculate()">計算</button>
-
-  <div class="output" id="result"></div>
+    <!-- 輸出 -->
+    <div id="output" class="mt-6 bg-gray-50 p-4 rounded-lg space-y-2 text-lg font-medium text-gray-800"></div>
+  </div>
 
   <script>
-    function handleOtherCoin(select) {
-      const customInput = document.getElementById("customCoin");
-      customInput.style.display = select.value === "other" ? "block" : "none";
+    const modeSelect = document.getElementById("mode");
+    const leverageInputContainer = document.getElementById("leverageInputContainer");
+    const stopLossPercentContainer = document.getElementById("stopLossPercentContainer");
+    const customSymbol = document.getElementById("customSymbol");
+    const symbolSelect = document.getElementById("symbol");
+
+    function handleCoinSelect() {
+      customSymbol.classList.toggle('hidden', symbolSelect.value !== 'custom');
     }
+
+    modeSelect.addEventListener("change", () => {
+      const isLeverageMode = modeSelect.value === "leverage";
+      leverageInputContainer.classList.toggle("hidden", !isLeverageMode);
+      stopLossPercentContainer.classList.toggle("hidden", isLeverageMode);
+    });
 
     function calculate() {
-      const capital = parseFloat(document.getElementById('capital').value);
-      const entry = parseFloat(document.getElementById('entry').value);
-      const stop = parseFloat(document.getElementById('stopLoss').value);
-      let slPercent = parseFloat(document.getElementById('slPercent').value);
-      const leverageInput = parseFloat(document.getElementById('leverage').value);
-      const mode = document.getElementById('mode').value;
-      const direction = document.getElementById('direction').value;
-      const coin = document.getElementById('coin').value;
-      const customCoin = document.getElementById('customCoin').value;
-      const coinName = coin === "other" ? customCoin || "自訂幣種" : coin;
+      const mode = modeSelect.value;
+      const capital = parseFloat(document.getElementById("capital").value);
+      const entryPrice = parseFloat(document.getElementById("entryPrice").value);
+      const stopPrice = parseFloat(document.getElementById("stopPrice").value);
+      const direction = document.getElementById("direction").value;
+      const symbol = symbolSelect.value === 'custom' ? customSymbol.value.toUpperCase() : symbolSelect.value;
+      const output = document.getElementById("output");
+      output.innerHTML = "";
 
-      if (!capital || !entry || !stop) {
-        alert("請填寫本金、進場價與止損價");
-        return;
+      const stopDistance = Math.abs((entryPrice - stopPrice) / entryPrice);
+
+      if (mode === "stopLoss") {
+        const lossPercent = parseFloat(document.getElementById("lossPercent").value) / 100;
+        const maxLoss = capital * lossPercent;
+        const positionSize = maxLoss / stopDistance;
+        const leverage = Math.floor(positionSize / capital);
+        const positionValue = positionSize * entryPrice;
+
+        output.innerHTML = `
+          幣種：${symbol}<br>
+          止損距離：${(stopDistance * 100).toFixed(2)}%<br>
+          ✅ 建議槓桿倍數：<strong>${leverage}x</strong><br>
+          📉 潛在虧損：$${maxLoss.toFixed(2)}（佔本金 ${(lossPercent * 100).toFixed(1)}%）<br>
+          💰 倉位大小：約 <strong>$${positionSize.toFixed(2)}</strong><br>
+          💼 倉位價值：約 <strong>$${positionValue.toFixed(2)}</strong>
+        `;
+      } else if (mode === "leverage") {
+        const leverage = parseFloat(document.getElementById("customLeverage").value);
+        const positionSize = capital * leverage;
+        const maxLoss = positionSize * stopDistance;
+        const positionValue = positionSize * entryPrice;
+        const lossPercent = (maxLoss / capital) * 100;
+
+        output.innerHTML = `
+          幣種：${symbol}<br>
+          止損距離：${(stopDistance * 100).toFixed(2)}%<br>
+          ✅ 槓桿倍數：<strong>${leverage}x</strong><br>
+          💰 倉位大小：約 <strong>$${positionSize.toFixed(2)}</strong><br>
+          💼 倉位價值：約 <strong>$${positionValue.toFixed(2)}</strong><br>
+          📉 潛在虧損：約 <strong>$${maxLoss.toFixed(2)}</strong>（佔本金約 <strong>${lossPercent.toFixed(2)}%</strong>）
+        `;
       }
-
-      // 計算止損百分比
-      if (!slPercent) {
-        slPercent = Math.abs((stop - entry) / entry) * 100;
-        document.getElementById('slPercent').value = slPercent.toFixed(2);
-      }
-
-      // 推薦槓桿倍數
-      const riskAmount = capital * (slPercent / 100);  // 可承受虧損金額
-      const priceDiff = Math.abs(entry - stop);
-      const positionSize = riskAmount / priceDiff; // 張數（合約數）
-      const positionValue = positionSize * entry; // 倉位價值（美金）
-
-      let maxLeverage = positionValue / capital;
-      if (mode === 'cross') {
-        maxLeverage = riskAmount / (priceDiff / entry * capital);
-      }
-
-      const usedLeverage = leverageInput || Math.floor(maxLeverage);
-      const displayLeverage = Math.floor(maxLeverage);
-
-      const realLoss = positionSize * priceDiff;
-      const lossPercent = (realLoss / capital) * 100;
-
-      document.getElementById('result').innerHTML = `
-        <b>幣種：</b>${coinName}<br>
-        <b>方向：</b>${direction === 'long' ? '做多' : '做空'}<br>
-        <b>模式：</b>${mode === 'isolated' ? '逐倉' : '全倉'}<br>
-        <b>建議槓桿倍數：</b>${displayLeverage} 倍<br>
-        <b>倉位大小：</b>${positionSize.toFixed(4)} 張<br>
-        <b>倉位價值：</b>${positionValue.toFixed(2)} USDT<br>
-        <b>潛在虧損金額：</b>${realLoss.toFixed(2)} USDT<br>
-        <b>佔本金比例：</b>${lossPercent.toFixed(2)}%
-      `;
     }
   </script>
-
 </body>
 </html>
 
-  
+
+
 
 
   
