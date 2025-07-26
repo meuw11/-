@@ -1,131 +1,104 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8">
-  <title>加密貨幣槓桿計算器</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: sans-serif;
-      max-width: 480px;
-      margin: auto;
-      padding: 2rem;
-      background: #f5f5f5;
-    }
-    h1 {
-      font-size: 1.5rem;
-      text-align: center;
-    }
-    label {
-      display: block;
-      margin: 1rem 0 0.3rem;
-    }
-    select, input {
-      width: 100%;
-      padding: 0.5rem;
-      font-size: 1rem;
-    }
-    button {
-      width: 100%;
-      padding: 0.8rem;
-      background-color: #4CAF50;
-      color: white;
-      font-size: 1rem;
-      border: none;
-      margin-top: 1.5rem;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .result {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-  </style>
-</head>
-<body>
-  <h1>槓桿倍數計算器</h1>
+import React, { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-  <label for="coin">選擇幣種</label>
-  <select id="coin">
-    <option value="BTC">BTC</option>
-    <option value="ETH">ETH</option>
-    <option value="SOL">SOL</option>
-    <option value="XRP">XRP</option>
-    <option value="ADA">ADA</option>
-  </select>
+export default function PositionCalculator() {
+  const [entryPrice, setEntryPrice] = useState(0);
+  const [stopLossPrice, setStopLossPrice] = useState(0);
+  const [accountBalance, setAccountBalance] = useState(0);
+  const [riskPercent, setRiskPercent] = useState(1);
+  const [positionValue, setPositionValue] = useState(0);
+  const [cost, setCost] = useState(0);
+  const [leverage, setLeverage] = useState(1);
+  const [positionType, setPositionType] = useState("long");
+  const [symbol, setSymbol] = useState("BTC");
 
-  <label for="position">方向</label>
-  <select id="position">
-    <option value="long">做多</option>
-    <option value="short">做空</option>
-  </select>
+  const calculatePosition = () => {
+    if (!entryPrice || !stopLossPrice || !accountBalance || !riskPercent || !cost) return;
 
-  <label for="entry">進場價</label>
-  <input type="number" id="entry" placeholder="例如：50000" required>
+    const riskAmount = (accountBalance * riskPercent) / 100;
+    const stopLossPerUnit = Math.abs(entryPrice - stopLossPrice);
+    const positionSize = riskAmount / stopLossPerUnit;
+    const totalPositionValue = positionSize * entryPrice;
+    const calculatedLeverage = totalPositionValue / cost;
 
-  <label for="stoploss">停損價</label>
-  <input type="number" id="stoploss" placeholder="例如：48000" required>
+    setPositionValue(positionSize);
+    setLeverage(calculatedLeverage);
+  };
 
-  <label for="capital">本金（USDT）</label>
-  <input type="number" id="capital" placeholder="例如：1000" required>
+  return (
+    <div className="grid grid-cols-1 gap-4 p-4">
+      <Card>
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>進場方向</Label>
+              <Select value={positionType} onValueChange={setPositionType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="選擇方向" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="long">做多</SelectItem>
+                  <SelectItem value="short">做空</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>幣種</Label>
+              <Select value={symbol} onValueChange={setSymbol}>
+                <SelectTrigger>
+                  <SelectValue placeholder="選擇幣種" />
+                </SelectTrigger>
+                <SelectContent>
+                  {['BTC', 'ETH', 'SOL', 'DOGE', 'BNB', 'XRP', 'ADA', 'SUI', 'Other'].map((coin) => (
+                    <SelectItem key={coin} value={coin}>{coin}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-  <button onclick="calculate()">計算</button>
+          <div>
+            <Label>進場價</Label>
+            <Input type="number" value={entryPrice} onChange={(e) => setEntryPrice(Number(e.target.value))} />
+          </div>
 
-  <div class="result" id="output" style="display:none;"></div>
+          <div>
+            <Label>止損價</Label>
+            <Input type="number" value={stopLossPrice} onChange={(e) => setStopLossPrice(Number(e.target.value))} />
+          </div>
 
-  <script>
-    function calculate() {
-      const entry = parseFloat(document.getElementById("entry").value);
-      const stop = parseFloat(document.getElementById("stoploss").value);
-      const capital = parseFloat(document.getElementById("capital").value);
-      const coin = document.getElementById("coin").value;
-      const position = document.getElementById("position").value;
+          <div>
+            <Label>本金 (USD)</Label>
+            <Input type="number" value={accountBalance} onChange={(e) => setAccountBalance(Number(e.target.value))} />
+          </div>
 
-      const riskPercent = 0.03; // 固定風險 3%
+          <div>
+            <Label>投入成本 (USD)</Label>
+            <Input type="number" value={cost} onChange={(e) => setCost(Number(e.target.value))} />
+          </div>
 
-      if (isNaN(entry) || isNaN(stop) || isNaN(capital)) {
-        alert("請填入所有欄位");
-        return;
-      }
+          <div>
+            <Label>願意承受的虧損佔比 (%)</Label>
+            <Input type="number" value={riskPercent} onChange={(e) => setRiskPercent(Number(e.target.value))} />
+          </div>
 
-      let priceDiff;
-      if (position === "long") {
-        if (stop >= entry) {
-          alert("停損價應低於進場價（做多）");
-          return;
-        }
-        priceDiff = entry - stop;
-      } else {
-        if (stop <= entry) {
-          alert("停損價應高於進場價（做空）");
-          return;
-        }
-        priceDiff = stop - entry;
-      }
+          <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={calculatePosition}>
+            計算倉位與槓桿
+          </button>
 
-      const risk = capital * riskPercent;
-      const quantity = risk / priceDiff;
-      const positionSize = quantity * entry;
-      const leverage = positionSize / capital;
-
-      const output = document.getElementById("output");
-      output.style.display = "block";
-      output.innerHTML = `
-        幣種：<strong>${coin}</strong><br>
-        方向：<strong>${position === "long" ? "做多" : "做空"}</strong><br>
-        可使用槓桿：<strong>${leverage.toFixed(2)} 倍</strong><br>
-        倉位金額：約 <strong>${positionSize.toFixed(2)} USDT</strong><br>
-        可買入數量：約 <strong>${quantity.toFixed(6)} ${coin}</strong>
-      `;
-    }
-  </script>
-</body>
-</html>
+          <div>
+            <p>倉位大小：{positionValue.toFixed(4)} {symbol}</p>
+            <p>倉位價值：${(positionValue * entryPrice).toFixed(2)} USD</p>
+            <p>槓桿倍數：約 {leverage.toFixed(2)} 倍</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 
 
