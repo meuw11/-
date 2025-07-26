@@ -1,103 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>永續合約止損計算器</title>
-  <script>
-    function updateStopLossDistance() {
-      const entry = parseFloat(document.getElementById("entryPrice").value);
-      const stop = parseFloat(document.getElementById("stopPrice").value);
-      if (!isNaN(entry) && !isNaN(stop) && entry !== 0) {
-        const distance = Math.abs((entry - stop) / entry * 100).toFixed(2);
-        document.getElementById("stopDistance").value = distance;
-      }
+  <title>槓桿計算機</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 20px;
     }
-
-    function calculateIsolated() {
-      const cost = parseFloat(document.getElementById("cost").value);
-      const entry = parseFloat(document.getElementById("entryPrice").value);
-      const stop = parseFloat(document.getElementById("stopPrice").value);
-      const direction = document.querySelector('input[name="direction"]:checked').value;
-
-      if (isNaN(cost) || isNaN(entry) || isNaN(stop)) return;
-
-      let lossRate;
-      if (direction === "long") {
-        lossRate = (entry - stop) / entry;
-      } else {
-        lossRate = (stop - entry) / entry;
-      }
-
-      const leverage = Math.floor(1 / Math.abs(lossRate));
-      const lossAmount = cost;
-
-      document.getElementById("isolatedResult").innerHTML =
-        `建議槓桿倍數：${leverage} 倍<br>` +
-        `潛在虧損：$${lossAmount.toFixed(2)} (${(Math.abs(lossRate * leverage) * 100).toFixed(2)}%)<br>` +
-        `倉位價值：約 $${(cost * leverage).toFixed(2)} 美金`;
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-
-    function calculateCross() {
-      const capital = parseFloat(document.getElementById("capital").value);
-      const stopPercent = parseFloat(document.getElementById("stopPercent").value);
-      const entry = parseFloat(document.getElementById("entryPriceCross").value);
-      const stop = parseFloat(document.getElementById("stopPriceCross").value);
-      const direction = document.querySelector('input[name="directionCross"]:checked').value;
-
-      if (isNaN(capital) || isNaN(stopPercent) || isNaN(entry) || isNaN(stop)) return;
-
-      let lossRate;
-      if (direction === "long") {
-        lossRate = (entry - stop) / entry;
-      } else {
-        lossRate = (stop - entry) / entry;
-      }
-
-      const leverage = Math.floor((stopPercent / 100) / Math.abs(lossRate));
-      const positionValue = capital * leverage;
-
-      document.getElementById("crossResult").innerHTML =
-        `建議槓桿倍數：${leverage} 倍<br>` +
-        `潛在虧損：$${(capital).toFixed(2)} (${stopPercent.toFixed(2)}%)<br>` +
-        `倉位價值：約 $${positionValue.toFixed(2)} 美金`;
+    h2 {
+      text-align: center;
     }
-  </script>
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .output {
+      margin-top: 20px;
+      background-color: #eef;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
-  <h2>永續合約止損計算器</h2>
-  <h3>模式選擇</h3>
-  <div style="border: 1px solid black; padding: 10px; margin-bottom: 20px">
-    <h3>逐倉模式</h3>
-    投入成本(USD)：<input type="number" id="cost" /><br />
-    幣種：
-    <select>
-      <option>BTC</option><option>ETH</option><option>SOL</option><option>DOGE</option>
-      <option>BNB</option><option>XRP</option><option>ADA</option><option>SUI</option>
-      <option>其他</option>
-    </select><br>
-    方向：
-    <input type="radio" name="direction" value="long" checked /> 多
-    <input type="radio" name="direction" value="short" /> 空<br />
-    進場價：<input type="number" id="entryPrice" oninput="updateStopLossDistance()" /><br />
-    止損價：<input type="number" id="stopPrice" oninput="updateStopLossDistance()" /><br />
-    止損距離(%)：<input type="text" id="stopDistance" readonly /><br />
-    <button onclick="calculateIsolated()">計算</button>
-    <div id="isolatedResult"></div>
+  <div class="container">
+    <h2>槓桿與風控計算機</h2>
+
+    <label for="capital">本金 (USD)</label>
+    <input type="number" id="capital" placeholder="輸入你的總本金" />
+
+    <label for="cost">投入成本 (USD)</label>
+    <input type="number" id="cost" placeholder="這筆單實際投入金額" />
+
+    <label for="price">進場價格 (每單位幣價)</label>
+    <input type="number" id="price" placeholder="例如：2500" />
+
+    <label for="stop">止損價格</label>
+    <input type="number" id="stop" placeholder="例如：2400" />
+
+    <label for="stopPercent">願意承受的止損比例 (%佔本金)</label>
+    <input type="number" id="stopPercent" placeholder="例如：2 表示2%" />
+
+    <button onclick="calculate()">計算</button>
+
+    <div class="output" id="output"></div>
   </div>
 
-  <div style="border: 1px solid black; padding: 10px;">
-    <h3>全倉模式</h3>
-    本金(USD)：<input type="number" id="capital" /><br />
-    方向：
-    <input type="radio" name="directionCross" value="long" checked /> 多
-    <input type="radio" name="directionCross" value="short" /> 空<br />
-    止損佔比(%)：<input type="number" id="stopPercent" /><br />
-    進場價：<input type="number" id="entryPriceCross" /><br />
-    止損價：<input type="number" id="stopPriceCross" /><br />
-    <button onclick="calculateCross()">計算</button>
-    <div id="crossResult"></div>
-  </div>
+  <script>
+    function calculate() {
+      const capital = parseFloat(document.getElementById('capital').value);
+      const cost = parseFloat(document.getElementById('cost').value);
+      const price = parseFloat(document.getElementById('price').value);
+      const stop = parseFloat(document.getElementById('stop').value);
+      const stopPercent = parseFloat(document.getElementById('stopPercent').value);
+
+      if (!capital || !cost || !price || !stop || !stopPercent || stop >= price) {
+        document.getElementById('output').innerText = '請確認所有輸入數值均有效，且止損價低於進場價';
+        return;
+      }
+
+      const positionSize = cost / price;
+      const leverage = cost / (price * positionSize);
+      const lossPerUnit = price - stop;
+      const totalLoss = lossPerUnit * positionSize;
+      const maxAcceptableLoss = capital * (stopPercent / 100);
+      const stopPercentUsed = (totalLoss / capital) * 100;
+
+      document.getElementById('output').innerHTML = `
+        🧮 倉位大小：<b>${positionSize.toFixed(4)}</b> 單位幣<br />
+        💸 槓桿倍率：<b>${(price * positionSize / cost).toFixed(2)} 倍</b><br />
+        📉 最大虧損（若跌到止損價）：<b>${totalLoss.toFixed(2)} USD</b><br />
+        ⚠️ 本金佔比損失：<b>${stopPercentUsed.toFixed(2)}%</b><br />
+        ✅ 你設定的可承受損失：<b>${maxAcceptableLoss.toFixed(2)} USD（${stopPercent}%）</b><br />
+        ${totalLoss > maxAcceptableLoss ? '<span style="color:red">⚠️ 超出可承受風險！請降低倉位或調整止損。</span>' : '<span style="color:green">✅ 在可承受風險範圍內。</span>'}
+      `;
+    }
+  </script>
 </body>
 </html>
 
